@@ -4,7 +4,8 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
-const md5 = require("md5");
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
 
 const app = express();
 
@@ -19,8 +20,6 @@ const userSchema = new mongoose.Schema({
     email: String,
     password: String
 });
-
-// encrypting the password of users
 
 
 
@@ -44,27 +43,35 @@ app.get("/register", function(req, res){
 
 
 app.post("/register", function(req, res){
-    // getting the username and password entered by user
-    const newUser =new User ({
-        email: req.body.username,
-        password: md5(req.body.password)
+    // using bcrypt to hash the password
+    bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+         // getting the username and password entered by user
+        const newUser =new User ({
+            email: req.body.username,
+            password: hash
+        });
+        // saving the details to the database and rendering the secrets page
+        newUser.save().then((result) => {
+            res.render("secrets");
+        }).catch((err) => {console.log(err)}); 
     });
-    // saving the details to the database and rendering the secrets page
-    newUser.save().then((result) => {
-        res.render("secrets");
-    }).catch((err) => console.log(err)); 
+   
+   
 });
 
 app.post("/login", function(req, res){
     const username = req.body.username;
-    const password = md5(req.body.password);
+    const password = req.body.password;
 
     // verifying the password to allow or deny access
-    User.findOne({email: username}).then((result) => {
-        if(result) {
-            if(result.password === password){
-                res.render("secrets");
-            }
+    User.findOne({email: username}).then((results) => {
+        if(results) {
+            bcrypt.compare(password, results.password, function(err, result) {
+               if(result == true){
+                    res.render("secrets");
+               }
+            }); 
+            
         }
     }).catch((err) => {console.log(err)});
 });
