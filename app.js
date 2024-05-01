@@ -4,10 +4,9 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
-const encrypt = require("mongoose-encryption");
+const md5 = require("md5");
 
 const app = express();
-
 
 app.use(express.static("public"));
 app.set("view engine", "ejs");
@@ -21,29 +20,36 @@ const userSchema = new mongoose.Schema({
     password: String
 });
 
+// encrypting the password of users
 
-userSchema.plugin(encrypt, {secret: process.env.SECRET, encryptedFields: ["password"]});
 
 
 
 const User = new mongoose.model("User", userSchema);
 
+// rendering the home page
 app.get("/", function(req, res){
     res.render("home");
 });
+
+// rendering the login page
 app.get("/login", function(req, res){
     res.render("login");
 });
+
+// rendering the register page
 app.get("/register", function(req, res){
     res.render("register");
 });
 
+
 app.post("/register", function(req, res){
+    // getting the username and password entered by user
     const newUser =new User ({
         email: req.body.username,
-        password: req.body.password
+        password: md5(req.body.password)
     });
-
+    // saving the details to the database and rendering the secrets page
     newUser.save().then((result) => {
         res.render("secrets");
     }).catch((err) => console.log(err)); 
@@ -51,12 +57,13 @@ app.post("/register", function(req, res){
 
 app.post("/login", function(req, res){
     const username = req.body.username;
-    const password = req.body.password;
+    const password = md5(req.body.password);
 
+    // verifying the password to allow or deny access
     User.findOne({email: username}).then((result) => {
         if(result) {
             if(result.password === password){
-                res.render("secrets")
+                res.render("secrets");
             }
         }
     }).catch((err) => {console.log(err)});
